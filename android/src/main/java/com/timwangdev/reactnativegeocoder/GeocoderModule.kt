@@ -55,16 +55,15 @@ class GeocoderModule(reactContext: ReactApplicationContext) : ReactContextBaseJa
 
   @ReactMethod
   fun geocodePositionAndroid(position: ReadableMap, config: ReadableMap, promise: Promise) {
-    val localeStr = config.getString("locale")
-    if (localeStr != null && !locale.equals(Locale(localeStr))) {
-      locale = Locale(localeStr)
+    val localeObj = if (config.hasKey("locale")) Locale(config.getString("locale")) else locale
+    if (localeObj != null && !locale.equals(localeObj)) {
+      locale = localeObj
       geocoder = Geocoder(getReactApplicationContext(), locale)
     }
-    var maxResults = config.getInt("maxResults")
-    if (maxResults <= 0) maxResults = 5;
+    val maxResults = if (config.hasKey("maxResults")) config.getInt("maxResults") else 5
     try {
       val addresses = geocoder.getFromLocation(position.getDouble("lat"), position.getDouble("lng"), maxResults)
-
+      promise.resolve(transform(addresses))
     } catch (e: Exception) {
       promise.reject("NATIVE_ERROR", e)
     }
