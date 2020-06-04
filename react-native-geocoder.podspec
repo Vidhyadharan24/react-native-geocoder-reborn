@@ -11,9 +11,10 @@ Pod::Spec.new do |s|
   s.authors      = package["author"]
 
   s.platforms    = { :ios => "9.0" }
-  s.source       = { :git => "https://github.com/timwangdev/react-native-geocoder-reborn.git", :tag => "#{s.version}" }
+  s.source       = { :git => "https://github.com/vidhyadharan24/react-native-geocoder-reborn.git", :tag => "#{s.version}" }
 
   s.source_files = "ios/**/*.{h,m}"
 
   s.dependency "React"
+  s.dependency 'GoogleMaps', '~> 3.1.0'
 end
