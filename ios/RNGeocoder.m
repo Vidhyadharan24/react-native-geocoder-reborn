@@ -32,7 +32,9 @@ RCT_EXPORT_METHOD(geocodePosition:(CLLocation *)location
         self.geocoder = [[CLGeocoder alloc] init];
     } else {
         @try {
-           [GMSServices sharedServices];
+            dispatch_sync(dispatch_get_main_queue(), ^{
+                [GMSServices sharedServices];
+            });
         }
         @catch (NSException *exception) {
             if (!gmsKey) {
