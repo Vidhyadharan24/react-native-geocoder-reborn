@@ -22,36 +22,72 @@
 RCT_EXPORT_MODULE();
 
 RCT_EXPORT_METHOD(geocodePosition:(CLLocation *)location
+                  gmsKey:(NSString *)gmsKey
                   locale:(NSLocale *)locale
                   maxResult:(int)maxResult
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 {
-    if (!self.geocoder) {
+    if (!self.geocoder && !gmsKey) {
         self.geocoder = [[CLGeocoder alloc] init];
+    } else {
+        @try {
+           [GMSServices sharedServices];
+        }
+        @catch (NSException *exception) {
+            if (!gmsKey) {
+                [GMSServices provideAPIKey: gmsKey];
+            } else {
+                NSMutableDictionary * info = [NSMutableDictionary dictionary];
+                [info setValue:exception.name forKey:@"ExceptionName"];
+                [info setValue:exception.reason forKey:@"ExceptionReason"];
+                [info setValue:exception.callStackReturnAddresses forKey:@"ExceptionCallStackReturnAddresses"];
+                [info setValue:exception.callStackSymbols forKey:@"ExceptionCallStackSymbols"];
+                [info setValue:exception.userInfo forKey:@"ExceptionUserInfo"];
+
+                NSError *error = [[NSError alloc] initWithDomain:@"Google maps" code:0 userInfo:info];
+                return reject(@"GOOGLEMAPS_ERROR", @"Google maps service has not been initialized, pass the key in options", error);
+            }
+        }
     }
 
-    if (self.geocoder.geocoding) {
+    if (self.geocoder && self.geocoder.geocoding) {
         [self.geocoder cancelGeocode];
     }
+    
+    if (self.geocoder) {
+        CLGeocodeCompletionHandler handler = ^void(NSArray< CLPlacemark *> *placemarks, NSError *error) {
+            if (error) {
+                if (placemarks.count == 0) {
+                    return reject(@"EMPTY_RESULT", @"Geocoder returned an empty list.", error);
+                }
 
-    CLGeocodeCompletionHandler handler = ^void(NSArray< CLPlacemark *> *placemarks, NSError *error) {
-        if (error) {
-            if (placemarks.count == 0) {
-                return reject(@"EMPTY_RESULT", @"Geocoder returned an empty list.", error);
+                return reject(@"NATIVE_ERROR", @"reverseGeocodeLocation failed.", error);
             }
+            resolve([self placemarksToDictionary:placemarks maxResult:maxResult]);
+        };
 
-            return reject(@"NATIVE_ERROR", @"reverseGeocodeLocation failed.", error);
+        if (@available(iOS 11.0, *)) {
+            [self.geocoder reverseGeocodeLocation:location
+                                  preferredLocale:locale
+                                completionHandler:handler];
+        } else {
+            [self.geocoder reverseGeocodeLocation:location completionHandler:handler];
         }
-        resolve([self placemarksToDictionary:placemarks maxResult:maxResult]);
-    };
-
-    if (@available(iOS 11.0, *)) {
-        [self.geocoder reverseGeocodeLocation:location
-                              preferredLocale:locale
-                            completionHandler:handler];
     } else {
-        [self.geocoder reverseGeocodeLocation:location completionHandler:handler];
+        GMSReverseGeocodeCallback handler = ^(GMSReverseGeocodeResponse * response, NSError * error) {
+            if (error) {
+                if (response.results.count == 0) {
+                    return reject(@"EMPTY_RESULT", @"Geocoder returned an empty list.", error);
+                }
+
+                return reject(@"NATIVE_ERROR", @"reverseGeocodeLocation failed.", error);
+            }
+            resolve([self gmsResultsToDictionary:response.results maxResult:maxResult]);
+        };
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [[GMSGeocoder geocoder] reverseGeocodeCoordinate: location.coordinate completionHandler: handler];
+        });
     }
 }
 
@@ -168,6 +204,50 @@ RCT_EXPORT_METHOD(geocodeAddressInRegion:(NSString *)address
 
     return results;
 
+}
+
+- (NSArray *)gmsResultsToDictionary:(NSArray<GMSAddress *> *)addresses
+                          maxResult:(int)maxResult{
+
+    NSMutableArray<NSDictionary *> *results = [[NSMutableArray alloc] init];
+
+    for (int i = 0; i < addresses.count; i++) {
+        if (i == maxResult) {
+            break;
+        }
+        GMSAddress *address = [addresses objectAtIndex:i];
+        
+//        NSString *name = nil;
+//
+//        if (![address.name isEqualToString:address.locality] &&
+//            ![address.name isEqualToString:address.thoroughfare] &&
+//            ![address.name isEqualToString:address.subThoroughfare])
+//        {
+//            name = address.name;
+//        }
+                
+        NSDictionary *result = @{
+//            @"feature": name ?: [NSNull null],
+            @"position": @{
+                 @"lat": [NSNumber numberWithDouble:address.coordinate.latitude],
+                 @"lng": [NSNumber numberWithDouble:address.coordinate.longitude],
+                 },
+            @"country": address.country ?: [NSNull null],
+//            @"countryCode": placemark.ISOcountryCode ?: [NSNull null],
+            @"locality": address.locality ?: [NSNull null],
+            @"subLocality": address.subLocality ?: [NSNull null],
+            @"streetName": address.thoroughfare ?: [NSNull null],
+//            @"streetNumber": placemark.subThoroughfare ?: [NSNull null],
+            @"postalCode": address.postalCode ?: [NSNull null],
+            @"adminArea": address.administrativeArea ?: [NSNull null],
+//            @"subAdminArea": placemark.subAdministrativeArea ?: [NSNull null],
+            @"formattedAddress": [address.lines componentsJoinedByString:@", "] ?: [NSNull null]
+        };
+
+        [results addObject:result];
+    }
+
+    return results;
 }
 
 @end

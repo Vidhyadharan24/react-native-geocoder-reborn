@@ -2,6 +2,7 @@
 #import <React/RCTConvert.h>
 
 #import <CoreLocation/CoreLocation.h>
+@import GoogleMaps;
 
 @interface RCTConvert (CoreLocation)
 + (CLLocation *)CLLocation:(id)json;

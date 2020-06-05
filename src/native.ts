@@ -6,6 +6,7 @@ const { RNGeocoder: nativeGeocoder } = NativeModules;
 interface NativeImpl {
   geocodePosition: (
     position: Position,
+    gmsKey: string,
     locale: string,
     maxResult: number
   ) => Promise<GeocodingObject[]>;

@@ -77,6 +77,7 @@ async function geocodePosition(
     } else {
       return await nativeImpl.geocodePosition(
         position,
+        options.apiKey,
         options.locale || defaultOptions.locale,
         options.maxResults || defaultOptions.maxResults
       );
