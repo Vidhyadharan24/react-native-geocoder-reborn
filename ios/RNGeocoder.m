@@ -64,7 +64,7 @@ RCT_EXPORT_METHOD(geocodePosition:(CLLocation *)location
                     return reject(@"EMPTY_RESULT", @"Geocoder returned an empty list.", error);
                 }
 
-                return reject(@"NATIVE_ERROR", @"reverseGeocodeLocation failed.", error);
+                return reject(@"NATIVE_ERROR", @"geocodePosition failed.", error);
             }
             resolve([self placemarksToDictionary:placemarks maxResult:maxResult]);
         };
@@ -112,7 +112,7 @@ RCT_EXPORT_METHOD(geocodeAddress:(NSString *)address
             if (placemarks.count == 0) {
               return reject(@"NOT_FOUND", @"Geocoder returned an empty list.", error);
             }
-            return reject(@"NATIVE_ERROR", @"geocodeAddressString failed.", error);
+            return reject(@"NATIVE_ERROR", @"geocodeAddress failed.", error);
         }
         resolve([self placemarksToDictionary:placemarks maxResult:maxResult]);
     };
@@ -149,7 +149,7 @@ RCT_EXPORT_METHOD(geocodeAddressInRegion:(NSString *)address
             if (placemarks.count == 0) {
               return reject(@"NOT_FOUND", @"Geocoder returned an empty list.", error);
             }
-            return reject(@"NATIVE_ERROR", @"geocodeAddressString failed.", error);
+            return reject(@"NATIVE_ERROR", @"geocodeAddressInRegion failed.", error);
         }
         resolve([self placemarksToDictionary:placemarks maxResult:maxResult]);
     };

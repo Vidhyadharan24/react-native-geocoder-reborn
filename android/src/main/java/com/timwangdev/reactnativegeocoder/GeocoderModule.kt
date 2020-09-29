@@ -24,18 +24,22 @@ class GeocoderModule(reactContext: ReactApplicationContext) : ReactContextBaseJa
 
   @ReactMethod
   fun geocodeAddressAndroid(addressName: String, config: ReadableMap, promise: Promise) {
-    val bounds = config.getMap("bounds")
+    val bounds: ReadableMap? = if (config.hasKey("bounds")) {
+      config.getMap("bounds")
+    } else null
+
     val swLat = bounds?.getDouble("swLat")
     val swLng = bounds?.getDouble("swLng")
     val neLat = bounds?.getDouble("neLat")
     val neLng = bounds?.getDouble("neLng")
-    val localeStr = config.getString("locale")
+    val localeStr = if (config.hasKey("locale")) config.getString("locale") else null
+
     if (localeStr != null && !locale.equals(Locale(localeStr))) {
       locale = Locale(localeStr)
       geocoder = Geocoder(getReactApplicationContext(), locale)
     }
-    var maxResults = config.getInt("maxResults")
-    if (maxResults <= 0) maxResults = 5;
+    var maxResults = if (config.hasKey("maxResults")) config.getInt("maxResults") else -1
+    if (maxResults <= 0) maxResults = 5
     try {
       val addresses: MutableList<Address>
       if (swLat != null && swLng != null && neLat != null && neLng != null) {
@@ -55,15 +59,20 @@ class GeocoderModule(reactContext: ReactApplicationContext) : ReactContextBaseJa
 
   @ReactMethod
   fun geocodePositionAndroid(position: ReadableMap, config: ReadableMap, promise: Promise) {
-    val localeObj = if (config.hasKey("locale")) Locale(config.getString("locale")) else locale
-    if (localeObj != null && !locale.equals(localeObj)) {
-      locale = localeObj
+    val localeStr = if (config.hasKey("locale")) config.getString("locale") else null
+    if (localeStr != null && !locale.equals(Locale(localeStr))) {
+      locale = Locale(localeStr)
       geocoder = Geocoder(getReactApplicationContext(), locale)
     }
-    val maxResults = if (config.hasKey("maxResults")) config.getInt("maxResults") else 5
+    var maxResults = if (config.hasKey("maxResults")) config.getInt("maxResults") else -1
+    if (maxResults <= 0) maxResults = 5;
     try {
       val addresses = geocoder.getFromLocation(position.getDouble("lat"), position.getDouble("lng"), maxResults)
-      promise.resolve(transform(addresses))
+      if (addresses != null && addresses.size > 0) {
+        promise.resolve(transform(addresses))
+      } else {
+        promise.reject("EMPTY_RESULT", "Geocoder returned an empty list.")
+      }
     } catch (e: Exception) {
       promise.reject("NATIVE_ERROR", e)
     }
